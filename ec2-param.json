@@ -1,0 +1,10 @@
+[
+    {
+        "ParameterKey": "FriendlyName",
+        "ParameterValue": "ee-demo-aws"
+    },
+    {
+        "ParameterKey": "EC2AMI",
+        "ParameterValue": "ami-0c1bc246476a5572b"
+    }
+]

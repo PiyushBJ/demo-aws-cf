@@ -1,0 +1,22 @@
+[
+    {
+        "ParameterKey": "FriendlyName",
+        "ParameterValue": "ee-demo-aws"
+    },
+    {
+        "ParameterKey": "VPCID",
+        "ParameterValue": "172.20.0.0/16"
+    },
+    {
+        "ParameterKey": "PubSubnet",
+        "ParameterValue": "172.20.10.0/24"
+    },
+    {
+        "ParameterKey": "PrivSubnet",
+        "ParameterValue": "172.20.20.0/24"
+    },
+    {
+        "ParameterKey": "CIDR",
+        "ParameterValue": "0.0.0.0/0"
+    }
+]

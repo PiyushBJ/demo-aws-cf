@@ -1,0 +1,191 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS Cloudformation template to create stack
+Parameters: 
+  FriendlyName:
+    Description: Friendly Name
+    Type: String
+  VPCID:
+    Description: This is VPC 
+    Type: String
+  PubSubnet:
+    Description: Public Subnet
+    Type: String
+  PrivSubnet:
+    Description: Private Subnet
+    Type: String
+  CIDR:
+    Description: CIDR Range
+    Type: String
+    AllowedPattern: '^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$'
+
+Resources: 
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCID
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: DemoVPC
+  MyIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: DemoIGW
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref MyIGW
+
+  PubRouteId:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PubRouteTable
+      DestinationCidrBlock: !Ref CIDR
+      GatewayId: !Ref MyIGW
+
+  PubRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: PubDemoRoute
+
+  Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub "${AWS::Region}a"
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PubSubnet
+      Tags:
+        - Key: Name
+          Value: PubSubnet
+
+  PubRouteTableAssocName:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet1
+      RouteTableId: !Ref PubRouteTable
+
+  EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NAT:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      AllocationId:
+         Fn::GetAtt:
+         - EIP
+         - AllocationId
+      SubnetId: !Ref Subnet1
+      Tags:
+      - Key: Stack
+        Value: Dev
+
+  PrivRouteId:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivRouteTable
+      DestinationCidrBlock: !Ref CIDR
+      NatGatewayId: !Ref NAT
+
+  PrivRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: PrivDemoRoute
+
+  Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: !Sub "${AWS::Region}a"
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PrivSubnet
+      Tags:
+        - Key: Name
+          Value: PrivSubnet
+
+  PrivRouteTableAssocName:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref Subnet2
+      RouteTableId: !Ref PrivRouteTable
+
+  PubSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: public-demo-sg
+      GroupDescription: security group
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: !Ref CIDR
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref CIDR
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          FromPort: 0
+          ToPort: 0
+          CidrIp: !Ref CIDR
+      Tags:
+        - Key: Name
+          Value: PubDemoSG
+  PrivSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: private-demo-sg
+      GroupDescription: private security group
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: "-1"
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref VPCID
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          FromPort: 0
+          ToPort: 0
+          CidrIp: !Ref CIDR
+      Tags:
+        - Key: Name
+          Value: PrivDemoSG
+
+Outputs:
+  MyVPCId:
+    Description: VPC ID
+    Value: !Ref MyVPC
+    Export: 
+      Name: !Sub "${FriendlyName}-MyVPCID"
+  Subnet1Id:
+    Description: Public Subnet
+    Value: !Ref Subnet1
+    Export: 
+      Name: !Sub "${FriendlyName}-PubSubnet"
+  Subnet2Id:
+    Description: Private Subnet
+    Value: !Ref Subnet2
+    Export: 
+      Name: !Sub "${FriendlyName}-PrivSubnet"
+  PubSecGroupId:
+    Description: Public SG
+    Value: !Ref PubSecGroup
+    Export: 
+      Name: !Sub "${FriendlyName}-PubSecGroup"
+  PrivSecGroupId:
+    Description: Private SG
+    Value: !Ref PrivSecGroup
+    Export: 
+      Name: !Sub "${FriendlyName}-PrivSecGroup"
